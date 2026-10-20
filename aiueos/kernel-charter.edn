@@ -1,0 +1,19 @@
+;; app-kernel-author — itonami（dapp）の aiueos アプリ記述子（notes.edn 形）。
+;; 判定コアは aiueos/kernel_charter.cljk（charter の境界・受入・parity ゲート）。
+;; 正本は README.md（この repo は charter（契約書）であって実装ではない）。
+;; pure（:effects #{}）。
+{:aiueos/component :app/kernel-charter
+ :aiueos/kind :app
+ :aiueos/trust :untrusted
+ :aiueos/source "kernel_charter.cljk"
+ :aiueos/wasm "kernel_charter.wasm"
+ :aiueos/entry "main"
+ :aiueos/args []
+ :aiueos/imports #{}
+ :aiueos/exports #{:app/main
+                   :app/mechanism-judgment
+                   :app/acceptance-ok
+                   :app/parity-gate
+                   :app/cutover-ok}
+ :aiueos/effects #{}
+ :aiueos/limits {:memory-pages 16 :fuel 5000000}}
