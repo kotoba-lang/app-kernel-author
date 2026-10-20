@@ -1,0 +1,77 @@
+(ns kernel.charter
+  "kernel authoring charter 判定コア — itonami dapp bundle（pure, :effects #{}）。
+
+  Kernel 判断核の authoring charter の境界と受入の判定（正本: README.md —
+  この repo は charter（契約書）であって実装ではない）:
+
+  - **層の境界**: 判断（decision）は .kotoba/.cljk（whole-component Q9
+    migration。**predicate だけの shadow は移行進捗にならない**）。
+    機構（mechanism）は C/asm で **decision-free のみ** ——
+    **新しい admission / validation 経路を C に足さない**。
+  - **build/acceptance は --jvm-free のみ**。java / javac / clojure / clj は
+    deny/trace。**fallback で JVM を使わない — block する**。JVM oracle は
+    diagnostic であって acceptance ではない。
+  - **parity**: payload CID・definition CID・exports/imports・effects・
+    resource bounds が一致するまで consumer cutover しない。
+    **skip と pass を同じ顔にしない**。
+
+  mechanism-judgment: 1 = C に足して良い（decision-free な機構）
+    / 0 = 拒否（admission / validation 経路は C に足さない）
+  acceptance-ok: 1 = jvm-free かつ verified native / 0 = 拒否
+  parity-gate のエラービット（0 = cutover 可）:
+    1 :cid-mismatch     payload / definition CID 不一致
+    2 :exports-mismatch exports/imports 不一致
+    4 :effects-mismatch effects 不一致
+    8 :bounds-mismatch  resource bounds 不一致
+  cutover-ok: 1 = skip と pass を区別している / 0 = 同じ顔（違反）
+
+  実行 host はスカラーのみ = KIR v3 / i64/direct ABI（kernel/selfhost 両対応）。
+
+  テストはゼロ引数 test-*、戻り 1/0:
+  <amu> test aiueos/kernel_charter.cljk"
+  (:export [main mechanism-judgment acceptance-ok parity-gate cutover-ok
+            test-mechanism test-acceptance test-parity test-cutover
+            test-fail-closed]))
+
+(defn main [] :i64
+  0)
+
+(defn mechanism-judgment [is-decision-free :i64] :i64
+  (if (= is-decision-free 1) 1 0))
+
+(defn acceptance-ok [jvm-free :i64 verified-native :i64] :i64
+  (if (and (= jvm-free 1) (= verified-native 1)) 1 0))
+
+(defn- denied [ok :i64 bit :i64] :i64
+  (if (= ok 1) 0 bit))
+
+(defn parity-gate [cid-match :i64 exports-match :i64 effects-match :i64 bounds-match :i64] :i64
+  (+ (denied cid-match 1)
+     (denied exports-match 2)
+     (denied effects-match 4)
+     (denied bounds-match 8)))
+
+(defn cutover-ok [skip-pass-distinct :i64] :i64
+  (if (= skip-pass-distinct 1) 1 0))
+
+;; --- tests（戻り 1 = pass） ------------------------------------------------
+
+(defn test-mechanism [] :i64
+  ;; admission / validation 経路は C に足さない
+  (if (= (+ (mechanism-judgment 1) (mechanism-judgment 0)) 1) 1 0))
+
+(defn test-acceptance [] :i64
+  ;; --jvm-free のみ。JVM は diagnostic（acceptance ではない）
+  (if (= (+ (acceptance-ok 1 1) (acceptance-ok 1 0) (acceptance-ok 0 1) (acceptance-ok 0 0)) 1) 1 0))
+
+(defn test-parity [] :i64
+  ;; CID / exports / effects / bounds がすべて一致して初めて cutover
+  (if (= (+ (parity-gate 1 1 1 1) (parity-gate 0 1 1 1) (parity-gate 1 0 1 1)) 3) 1 0))
+
+(defn test-cutover [] :i64
+  ;; skip と pass を同じ顔にしない
+  (if (= (+ (cutover-ok 1) (cutover-ok 0)) 1) 1 0))
+
+(defn test-fail-closed [] :i64
+  ;; 全不一致は 15（全ビット）— cutover 不可
+  (if (= (parity-gate 0 0 0 0) 15) 1 0))

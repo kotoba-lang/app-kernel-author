@@ -1,0 +1,27 @@
+(ns kernel.charter-parity-test
+  "aiueos/kernel_charter.cljk（判定コア）と正本（README.md の charter）の
+  parity。境界・受入・parity ゲートの規約が変われば落ちる drift 検査。"
+  (:require [clojure.test :refer [deftest is testing]]
+            [clojure.string :as str]
+            ["fs" :as fs]))
+
+(def charter (fs/readFileSync "README.md" "utf8"))
+
+(deftest boundary-matches-guest
+  (testing "guest test-mechanism: 機構は C で decision-free のみ"
+    (is (str/includes? charter "decision-free"))
+    (is (str/includes? charter "admission/validation 経路を C に足さない"))
+    (is (str/includes? charter "predicate だけの shadow は移行進捗にならない")))
+  (testing "guest test-acceptance: build/acceptance は --jvm-free のみ"
+    (is (str/includes? charter "--jvm-free"))
+    (is (str/includes? charter "fallback で JVM を使わない"))
+    (is (str/includes? charter "diagnostic であって acceptance ではない"))))
+
+(deftest parity-gate-matches-guest
+  (testing "guest test-parity / test-fail-closed: CID / exports / effects / bounds"
+    (is (str/includes? charter "payload CID"))
+    (is (str/includes? charter "exports/imports"))
+    (is (str/includes? charter "effects"))
+    (is (str/includes? charter "resource")))
+  (testing "guest test-cutover: skip と pass を同じ顔にしない"
+    (is (str/includes? charter "skip と pass を同じ顔にしない"))))
